@@ -1,5 +1,5 @@
 
-from flask import Flask, render_template, request, redirect, flash
+from flask import Flask, render_template, request, redirect, flash, session
 from flask_debugtoolbar import DebugToolbarExtension
 from surveys import satisfaction_survey
 
@@ -9,20 +9,31 @@ app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
 
 debug = DebugToolbarExtension(app)
 
-responses = []
+RESPONSES_KEY = 'responses'
 
 @app.route('/')
 def show_survey_start():
     '''Show start page with survey title and instructions'''
 
+    
     title = satisfaction_survey.title
     instructions = satisfaction_survey.instructions
 
     return render_template('survey-start.html', title=title, instructions=instructions)
 
+@app.route('/begin', methods=['POST'])
+def start_session():
+    '''Go to question 1 and start the session'''
+    
+    session[RESPONSES_KEY] = []
+
+    return redirect('/questions/0')
+
+
 @app.route('/questions/<int:quest_id>')
 def show_survey_question(quest_id):
     '''Show question from survey'''
+    responses = session.get(RESPONSES_KEY)
     
     if responses is None:
         #If there are no answer in the response list return to home page
@@ -45,7 +56,10 @@ def append_choice():
     '''Append answer to question to the response list and redirect to next question'''
 
     choice = request.form['answer']
+
+    responses = session[RESPONSES_KEY]
     responses.append(choice)
+    session[RESPONSES_KEY] = responses
 
     if len(responses) == len(satisfaction_survey.questions):
         return redirect('/congrats')
